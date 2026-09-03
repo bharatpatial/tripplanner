@@ -1,0 +1,13 @@
+.currencySymbol {
+  flex-shrink: 0;
+  color: #4f66ed;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.currencyCode {
+  flex-shrink: 0;
+  color: #92939c;
+  font-size: 9px;
+  font-weight: 700;
+}

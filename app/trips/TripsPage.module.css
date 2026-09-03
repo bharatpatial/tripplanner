@@ -1,0 +1,64 @@
+.itinerarySection {
+  margin-top: 10px;
+}
+
+.routePlaces {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.routePlaces > span {
+  grid-column: 1 / -1;
+}
+
+.routePlaces button {
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itineraryLayout {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  width: 100% !important;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.itineraryLayout > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.mapPanel {
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  height: 520px;
+  overflow: hidden;
+}
+
+.mapPanel iframe {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  border: 0;
+}
+
+@media (max-width: 900px) {
+  .itineraryLayout,
+  .routePlaces {
+    grid-template-columns: 1fr;
+  }
+
+  .itinerarySection {
+    margin-top: 32px;
+  }
+}

@@ -1,0 +1,41 @@
+.card {
+  margin-top: 16px;
+  padding: 13px 14px;
+  border: 1px solid #dfe6ff;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #f7f9ff, #eef2ff);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #677288;
+  font-size: 8px;
+  font-weight: 750;
+  letter-spacing: 0.7px;
+}
+
+.head span:last-child,
+.amount strong:last-child {
+  color: #4f66ed;
+}
+
+.amount {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 9px;
+}
+
+.amount span,
+.card p,
+.card small {
+  color: #7b8396;
+}
+
+.card small {
+  display: block;
+  margin-top: 7px;
+  font-size: 9px;
+}
