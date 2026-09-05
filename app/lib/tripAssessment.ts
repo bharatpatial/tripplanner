@@ -114,7 +114,7 @@ export function getTransportWarning(
   const international = startingCurrency.code !== destinationCurrency.code;
 
   if (international && form.transport !== "Flight") {
-    return `${form.transport} cannot normally complete this international journey alone. Zoya will use ${form.transport} where practical and add a flight or local connection.`;
+    return `This trip cannot realistically be completed from ${form.from} to ${form.destination} using ${form.transport} as the main transport. Please select Flight, which is the most practical and convenient option for this international journey.`;
   }
 
   return "";

@@ -375,6 +375,44 @@ function replacePlaceReference(
   return value.replaceAll(oldPlace, newPlace);
 }
 
+function readItinerarySteps(
+  summary: unknown,
+  steps: unknown,
+) {
+  const source = Array.isArray(steps)
+    ? steps.map(String)
+    : String(summary || "").split(
+        /\n|(?=\d+[.)]\s+)/,
+      );
+
+  const result: string[] = [];
+
+  source.forEach((value) => {
+    const line = String(value)
+      .replace(/^\s*\d+[.)]\s*/, "")
+      .trim();
+
+    if (!line) return;
+
+    const previousIndex = result.length - 1;
+    const previous = result[previousIndex] || "";
+
+    if (/^\d$/.test(line) && /\d{1,2}:$/.test(previous)) {
+      result[previousIndex] = `${previous}${line}0`;
+      return;
+    }
+
+    if (/^\d$/.test(line) && /\d{1,2}:\d$/.test(previous)) {
+      result[previousIndex] = `${previous}${line}`;
+      return;
+    }
+
+    if (line.length > 2) result.push(line);
+  });
+
+  return result;
+}
+
 const tripDays: TripDay[] = [
   {
     day: 1,
@@ -2296,9 +2334,7 @@ export function useTripPilot(
 
     if (modeWarning) {
       setTransportWarning(modeWarning);
-      window.setTimeout(() => {
-        setTransportWarning("");
-      }, 5000);
+      return;
     }
 
     setLoading(true);
@@ -2469,14 +2505,10 @@ export function useTripPilot(
               rawPlace,
               dayPlace,
             );
-            const summarySteps = summary
-              .split(/\n|(?=\d+[.)]\s)/)
-              .map((line) =>
-                line
-                  .replace(/^\s*\d+[.)]\s*/, "")
-                  .trim(),
-              )
-              .filter(Boolean);
+            const summarySteps = readItinerarySteps(
+              summary,
+              day.steps,
+            );
             const supportingSteps = [
               `Confirm the live departure time and approximate journey duration for today's route to ${dayPlace}.`,
               "Keep a 30–60 minute transfer buffer and verify the correct platform, terminal or pickup point.",
@@ -2802,6 +2834,10 @@ export function useTripPilot(
       );
       setActiveDay(1);
       setCalendarDate(form.start);
+      window.sessionStorage.setItem(
+        "trippilot-passport-stamp",
+        String(Date.now()),
+      );
       navigate("dashboard");
       window.scrollTo({
         top: 0,
@@ -2969,6 +3005,61 @@ export function useTripPilot(
     return `I filled the homepage trip form:\n\n${summary}\n\nShall I create your trip? Say yes or no.`;
   }
 
+  function missingDetailsMessage(
+    language: AssistantLanguage,
+    missing: string[],
+  ) {
+    const englishLabels: Record<string, string> = {
+      "starting place": "starting place",
+      destination: "destination",
+      "departure date": "departure date",
+      "return date": "return date",
+      travellers: "number of travellers",
+      budget: "budget",
+      "travel style": "travel style",
+      transport: "preferred transport",
+    };
+    const hindiLabels: Record<string, string> = {
+      "starting place": "शुरुआत की जगह",
+      destination: "मंज़िल",
+      "departure date": "जाने की तारीख",
+      "return date": "लौटने की तारीख",
+      travellers: "यात्रियों की संख्या",
+      budget: "बजट",
+      "travel style": "ट्रैवल स्टाइल",
+      transport: "पसंदीदा ट्रांसपोर्ट",
+    };
+    const punjabiLabels: Record<string, string> = {
+      "starting place": "ਸ਼ੁਰੂਆਤੀ ਥਾਂ",
+      destination: "ਮੰਜ਼ਿਲ",
+      "departure date": "ਜਾਣ ਦੀ ਤਾਰੀਖ",
+      "return date": "ਵਾਪਸੀ ਦੀ ਤਾਰੀਖ",
+      travellers: "ਯਾਤਰੀਆਂ ਦੀ ਗਿਣਤੀ",
+      budget: "ਬਜਟ",
+      "travel style": "ਟ੍ਰੈਵਲ ਸਟਾਈਲ",
+      transport: "ਪਸੰਦੀਦਾ ਟ੍ਰਾਂਸਪੋਰਟ",
+    };
+    const labels =
+      language === "Hindi"
+        ? hindiLabels
+        : language === "Punjabi"
+          ? punjabiLabels
+          : englishLabels;
+    const list = missing
+      .map((field) => labels[field] || field)
+      .join(", ");
+
+    if (language === "Hindi") {
+      return `बाकी जानकारी में केवल ${list} चाहिए। कृपया ये जानकारी बताइए।`;
+    }
+
+    if (language === "Punjabi") {
+      return `ਬਾਕੀ ਜਾਣਕਾਰੀ ਵਿੱਚ ਸਿਰਫ਼ ${list} ਚਾਹੀਦੀ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਇਹ ਜਾਣਕਾਰੀ ਦੱਸੋ।`;
+    }
+
+    return `I only need the remaining details: ${list}.`;
+  }
+
   async function sendZoya(e: FormEvent) {
     e.preventDefault();
     if (!chatValue.trim()) return;
@@ -3037,6 +3128,78 @@ export function useTripPilot(
       ]);
       if (voiceReply)
         speakZoya(reply, language);
+      setVoiceReply(false);
+      return;
+    }
+
+    const asksToChangeBudget =
+      /\b(change|update|set|replace|edit|correct)\b[\s\S]{0,45}\bbudget\b|\bbudget\b[\s\S]{0,45}\b(change|update|set|replace|edit|correct|to)\b|बजट[\s\S]{0,35}(बदल|कर दो|करें|रखो)|ਬਜਟ[\s\S]{0,35}(ਬਦਲ|ਕਰ ਦਿਓ|ਰੱਖੋ)/i.test(
+        question,
+      );
+
+    if (asksToChangeBudget) {
+      const amounts = question.match(/\d[\d,]*/g) || [];
+      const requestedBudget = String(
+        amounts[amounts.length - 1] || "",
+      ).replace(/,/g, "");
+      const budgetNumber = Number(requestedBudget);
+
+      if (Number.isFinite(budgetNumber) && budgetNumber > 0) {
+        const nextForm = {
+          ...form,
+          budget: requestedBudget,
+        };
+
+        setForm(nextForm);
+        setSpokenTripDraft((draft) => ({
+          ...draft,
+          budget: requestedBudget,
+        }));
+        setBudgetWarning("");
+        setBudgetStatus("");
+        setAiError("");
+        navigate("planner");
+
+        const formattedBudget = Number(
+          requestedBudget,
+        ).toLocaleString("en-IN");
+        const reply =
+          detectedLanguage === "Hindi"
+            ? `होमपेज का बजट ${startingCurrency.symbol}${formattedBudget} कर दिया गया है।`
+            : detectedLanguage === "Punjabi"
+              ? `ਹੋਮਪੇਜ ਦਾ ਬਜਟ ${startingCurrency.symbol}${formattedBudget} ਕਰ ਦਿੱਤਾ ਗਿਆ ਹੈ।`
+              : `Done. I changed the homepage trip budget to ${startingCurrency.symbol}${formattedBudget}.`;
+
+        setMessages((messages) => [
+          ...messages,
+          {
+            from: "zoya",
+            text: reply,
+          },
+        ]);
+
+        if (voiceReply) {
+          speakZoya(reply, detectedLanguage);
+        }
+
+        setVoiceReply(false);
+        return;
+      }
+
+      const reply =
+        detectedLanguage === "Hindi"
+          ? "कृपया नया बजट अंकों में बताइए, जैसे 180000।"
+          : detectedLanguage === "Punjabi"
+            ? "ਕਿਰਪਾ ਕਰਕੇ ਨਵਾਂ ਬਜਟ ਅੰਕਾਂ ਵਿੱਚ ਦੱਸੋ, ਜਿਵੇਂ 180000।"
+            : "Please provide the new budget as a number, for example 180000.";
+
+      setMessages((messages) => [
+        ...messages,
+        {
+          from: "zoya",
+          text: reply,
+        },
+      ]);
       setVoiceReply(false);
       return;
     }
@@ -3320,28 +3483,6 @@ export function useTripPilot(
       return;
     }
 
-    if (
-      (awaitingTripDetails || awaitingTripConfirmation) &&
-      !yesAnswer &&
-      !noAnswer &&
-      !correctionIntent &&
-      !looksLikeTripDetails &&
-      !wantsNewTrip
-    ) {
-      const reply =
-        detectedLanguage === "Hindi"
-          ? "क्या आप पिछली ट्रिप प्लानिंग जारी रखना चाहते हैं या उसे रद्द करना चाहते हैं? ‘जारी रखो’ या ‘रद्द करो’ कहें।"
-          : "Do you want to continue the previous trip planning or cancel it? Say ‘continue’ or ‘cancel’.";
-
-      setMessages((messages) => [
-        ...messages,
-        { from: "zoya", text: reply },
-      ]);
-      if (voiceReply) speakZoya(reply, detectedLanguage);
-      setVoiceReply(false);
-      return;
-    }
-
     if (awaitingTripConfirmation) {
       if (yesAnswer) {
         const reply =
@@ -3393,28 +3534,10 @@ export function useTripPilot(
         return;
       }
 
-      if (!correctionIntent) {
-        const reply =
-          detectedLanguage === "Hindi"
-            ? "कृपया हाँ या नहीं कहें। किसी जानकारी को बदलने के लिए बदलाव साफ़-साफ़ बताइए।"
-            : detectedLanguage === "Punjabi"
-              ? "ਕਿਰਪਾ ਕਰਕੇ ਹਾਂ ਜਾਂ ਨਹੀਂ ਕਹੋ। ਕੋਈ ਜਾਣਕਾਰੀ ਬਦਲਣ ਲਈ ਤਬਦੀਲੀ ਸਾਫ਼ ਦੱਸੋ।"
-              : "Please say yes or no, or clearly tell me what you want to change.";
-        setMessages((messages) => [
-          ...messages,
-          { from: "zoya", text: reply },
-        ]);
-        if (voiceReply)
-          speakZoya(
-            reply,
-            detectedLanguage,
-          );
-        setVoiceReply(false);
-        return;
+      if (correctionIntent || looksLikeTripDetails) {
+        setAwaitingTripConfirmation(false);
+        setAwaitingTripDetails(true);
       }
-
-      setAwaitingTripConfirmation(false);
-      setAwaitingTripDetails(true);
     }
 
     if (
@@ -3444,6 +3567,8 @@ export function useTripPilot(
 
     if (
       awaitingTripDetails ||
+      (awaitingTripConfirmation &&
+        (correctionIntent || looksLikeTripDetails)) ||
       (wantsNewTrip && looksLikeTripDetails)
     ) {
       try {
@@ -3457,7 +3582,7 @@ export function useTripPilot(
                   "application/json",
               },
               body: JSON.stringify({
-                mode: "chat",
+                mode: "extract",
                 question: `Extract trip-form details from the latest English, Hindi or Punjabi message. Return place names in English Latin letters even when spoken in Hindi or Punjabi. For a correction, return only the new corrected value, never the old value. Correct obvious speech-recognition spelling only when confident. Interpret "friends with me" as total travellers including the user. Infer Adventure from mountains, trekking or adventure activities and Relaxation from beaches or a peaceful trip. Convert dates to YYYY-MM-DD using year 2026 when omitted. Preferences are optional and must never be listed as missing. Current saved details: ${JSON.stringify(spokenTripDraft)}. Return ONLY compact JSON, no Markdown: {"from":"","destination":"","start":"","end":"","travellers":"","budget":"","travelType":"Adventure|Relaxation|Romantic|Family|Friends|Spiritual","transport":"Train|Flight|Bus|Car|Taxi","preferences":"","language":"English|Hindi|Punjabi","missing":[]}. Latest user speech: ${JSON.stringify(question)}`,
               }),
             },
@@ -3658,7 +3783,10 @@ export function useTripPilot(
         navigate("planner");
 
         if (missing.length > 0) {
-          const reply = `${tripQuestion(language)}\n\nMissing: ${missing.join(", ")}`;
+          const reply = missingDetailsMessage(
+            language,
+            missing,
+          );
           setMessages((messages) => [
             ...messages,
             { from: "zoya", text: reply },

@@ -1,5 +1,5 @@
 .itinerarySection {
-  margin-top: 10px;
+  margin-top: 0px;
 }
 
 .routePlaces {
@@ -50,6 +50,11 @@
   width: 100% !important;
   height: 100% !important;
   border: 0;
+}
+
+.itineraryLayout :global(.itinerarySummary) {
+  white-space: pre-line;
+  line-height: 1.75;
 }
 
 @media (max-width: 900px) {

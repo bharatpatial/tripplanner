@@ -29,6 +29,7 @@ export default function TripPlannerForm({ controller }: Props) {
     budgetWarning,
     budgetStatus,
     transportWarning,
+    setTransportWarning,
     setBudgetWarning,
     setBudgetStatus,
   } = controller;
@@ -44,6 +45,11 @@ export default function TripPlannerForm({ controller }: Props) {
     setBudgetWarning("");
     setBudgetStatus("");
     setField("budget", value);
+  }
+
+  function changeTransport(value: string) {
+    setTransportWarning("");
+    setField("transport", value);
   }
 
   return (
@@ -176,7 +182,7 @@ export default function TripPlannerForm({ controller }: Props) {
             <select
               value={form.transport}
               onChange={(event) =>
-                setField("transport", event.target.value)
+                changeTransport(event.target.value)
               }
             >
               <option value="Train">🚆 Train</option>
