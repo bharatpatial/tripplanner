@@ -160,13 +160,7 @@ export default function TripsPage() {
   } = controller;
 
   useEffect(() => {
-    if (passportStampStarted.current) {
-      const repeatedEffectTimer = window.setTimeout(() => {
-        setShowPassportStamp(false);
-      }, 2500);
-
-      return () => window.clearTimeout(repeatedEffectTimer);
-    }
+    if (passportStampStarted.current) return;
 
     const storedValue = window.sessionStorage.getItem(
       "trippilot-passport-stamp",
@@ -186,11 +180,9 @@ export default function TripsPage() {
     passportStampStarted.current = true;
     setShowPassportStamp(true);
 
-    const timer = window.setTimeout(() => {
+    window.setTimeout(() => {
       setShowPassportStamp(false);
-    }, 2500);
-
-    return () => window.clearTimeout(timer);
+    }, 2600);
   }, []);
 
   return (

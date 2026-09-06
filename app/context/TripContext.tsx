@@ -4,6 +4,7 @@ import {
   FormEvent,
   useEffect,
   useMemo,
+  useRef,
   useState,
   ReactNode,
 } from "react";
@@ -1186,6 +1187,7 @@ export function useTripPilot(
         text: "Hi! I’m Zoya, your AI travel copilot. Where should we go?",
       },
     ]);
+  const lastAnnouncedWarning = useRef("");
   const [form, setForm] = useState({
     from: "Ferozepur",
     destination: "Manali",
@@ -1710,6 +1712,57 @@ export function useTripPilot(
       window.clearTimeout(timer);
     };
   }, [form.destination, sessionReady]);
+
+  useEffect(() => {
+    const warning =
+      locationWarning ||
+      budgetWarning ||
+      transportWarning ||
+      aiError;
+
+    if (!warning) {
+      lastAnnouncedWarning.current = "";
+      return;
+    }
+
+    if (lastAnnouncedWarning.current === warning) {
+      return;
+    }
+
+    lastAnnouncedWarning.current = warning;
+    if (zoyaOpen) {
+      setMessages((currentMessages) => {
+        const lastMessage =
+          currentMessages[currentMessages.length - 1];
+
+        if (
+          lastMessage?.from === "zoya" &&
+          lastMessage.text === warning
+        ) {
+          return currentMessages;
+        }
+
+        return [
+          ...currentMessages,
+          {
+            from: "zoya",
+            text: warning,
+          },
+        ];
+      });
+    }
+
+    speakZoya(
+      warning,
+      languageFromText(warning),
+    );
+  }, [
+    locationWarning,
+    budgetWarning,
+    transportWarning,
+    aiError,
+  ]);
+
   const current = useMemo(
     () =>
       generatedDays[
@@ -1823,32 +1876,44 @@ export function useTripPilot(
     );
   }, [form.start, form.end]);
   const expenses = useMemo(() => {
-    const transport =
-      form.transport === "Flight"
-        ? 38
-        : form.transport === "Train"
-          ? 22
-          : form.transport === "Bus"
-            ? 18
-            : 26;
-    const hotel = Math.min(
-      58,
-      36 + Math.max(0, tripDuration - 2) * 2,
-    );
-    const total = transport + hotel;
-    const scale = total > 88 ? 88 / total : 1;
-    const finalTransport = Math.round(
-      transport * scale,
-    );
-    const finalHotel = Math.round(
-      hotel * scale,
-    );
+    let travelAmount = 0;
+    let hotelAmount = 0;
+    let otherAmount = 0;
+
+    generatedDays.forEach((day) => {
+      day.expenses?.forEach((expense) => {
+        const label = expense.label.toLowerCase();
+        const amount = Number(expense.amount || 0);
+
+        if (/travel|transport|train|flight|bus/.test(label)) {
+          travelAmount += amount;
+        } else if (/hotel|stay|room/.test(label)) {
+          hotelAmount += amount;
+        } else {
+          otherAmount += amount;
+        }
+      });
+    });
+
+    const total = travelAmount + hotelAmount + otherAmount;
+
+    if (total <= 0) {
+      return {
+        transport: 0,
+        hotel: 0,
+        other: 0,
+      };
+    }
+
+    const transport = Math.round((travelAmount / total) * 100);
+    const hotel = Math.round((hotelAmount / total) * 100);
+
     return {
-      transport: finalTransport,
-      hotel: finalHotel,
-      other: 100 - finalTransport - finalHotel,
+      transport,
+      hotel,
+      other: 100 - transport - hotel,
     };
-  }, [form.transport, tripDuration]);
+  }, [generatedDays]);
   const tripBudgetBreakdown = useMemo(
     () => {
       const totals: Record<
@@ -2051,6 +2116,16 @@ export function useTripPilot(
       form.start,
     ],
   );
+  const returnFlightUrl = useMemo(
+    () =>
+      `https://www.booking.com/flights/?${new URLSearchParams({ type: "ONEWAY", cabinClass: "ECONOMY", children: "0", adults: form.travellers, from: bookingDestination, to: bookingOrigin, depart: form.end }).toString()}`,
+    [
+      bookingOrigin,
+      bookingDestination,
+      form.travellers,
+      form.end,
+    ],
+  );
   const uberRideUrl = useMemo(() => {
     const params = new URLSearchParams({
       action: "setPickup",
@@ -2064,6 +2139,18 @@ export function useTripPilot(
     });
     return `https://m.uber.com/ul/?${params.toString()}`;
   }, [form.from, form.destination]);
+  const returnUberRideUrl = useMemo(() => {
+    const params = new URLSearchParams({
+      action: "setPickup",
+      "pickup[formatted_address]":
+        form.destination,
+      "pickup[nickname]": form.destination,
+      "dropoff[formatted_address]":
+        form.from,
+      "dropoff[nickname]": form.from,
+    });
+    return `https://m.uber.com/ul/?${params.toString()}`;
+  }, [form.from, form.destination]);
   const rapidoRideUrl = useMemo(
     () =>
       `https://www.rapido.bike/?${new URLSearchParams({ pickup: form.from, drop: form.destination, date: form.start }).toString()}`,
@@ -2072,6 +2159,11 @@ export function useTripPilot(
       form.destination,
       form.start,
     ],
+  );
+  const returnRapidoRideUrl = useMemo(
+    () =>
+      `https://www.rapido.bike/?${new URLSearchParams({ pickup: form.destination, drop: form.from, date: form.end }).toString()}`,
+    [form.from, form.destination, form.end],
   );
   const googleAttractionsUrl = useMemo(
     () =>
@@ -2091,6 +2183,15 @@ export function useTripPilot(
     bookingDestination,
     form.start,
   ]);
+  const returnBusBookingUrl = useMemo(() => {
+    const slug = (value: string) =>
+      value
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "");
+    return `https://www.redbus.in/bus-tickets/${slug(bookingDestination)}-to-${slug(bookingOrigin)}?onward=${encodeURIComponent(form.end)}`;
+  }, [bookingOrigin, bookingDestination, form.end]);
   const redRailUrl = useMemo(
     () =>
       `https://www.redbus.in/railways?${new URLSearchParams({ src: bookingOrigin, dst: bookingDestination, doj: form.start }).toString()}`,
@@ -2099,6 +2200,11 @@ export function useTripPilot(
       bookingDestination,
       form.start,
     ],
+  );
+  const returnRedRailUrl = useMemo(
+    () =>
+      `https://www.redbus.in/railways?${new URLSearchParams({ src: bookingDestination, dst: bookingOrigin, doj: form.end }).toString()}`,
+    [bookingOrigin, bookingDestination, form.end],
   );
   const transportBooking = useMemo(() => {
     if (form.transport === "Train")
@@ -2149,6 +2255,7 @@ export function useTripPilot(
       provider: "redRail by redBus",
       note: "Train search with your stations and date",
       href: redRailUrl,
+      returnHref: returnRedRailUrl,
       tone: "train",
     },
     {
@@ -2157,6 +2264,7 @@ export function useTripPilot(
       provider: "Booking.com",
       note: "Compare flights with your route details",
       href: bookingFlightUrl,
+      returnHref: returnFlightUrl,
       tone: "flight",
     },
     {
@@ -2165,6 +2273,7 @@ export function useTripPilot(
       provider: "redBus",
       note: "Intercity buses with your route selected",
       href: busBookingUrl,
+      returnHref: returnBusBookingUrl,
       tone: "bus",
     },
     {
@@ -2173,6 +2282,7 @@ export function useTripPilot(
       provider: "Uber",
       note: "Open Uber with your pickup and destination",
       href: uberRideUrl,
+      returnHref: returnUberRideUrl,
       tone: "rental",
     },
     {
@@ -2181,6 +2291,7 @@ export function useTripPilot(
       provider: "Uber",
       note: "Airport and city rides with your route",
       href: uberRideUrl,
+      returnHref: returnUberRideUrl,
       tone: "taxi",
     },
     {
@@ -2189,6 +2300,7 @@ export function useTripPilot(
       provider: "Rapido",
       note: "Open Rapido for local vehicle bookings",
       href: rapidoRideUrl,
+      returnHref: returnRapidoRideUrl,
       tone: "rapido",
     },
   ];
@@ -2326,6 +2438,7 @@ export function useTripPilot(
     setAiError("");
     setLocationWarning("");
     setBudgetWarning("");
+    setTransportWarning("");
     setBudgetStatus("");
 
     const normalizedStart = form.from
@@ -2878,6 +2991,29 @@ export function useTripPilot(
         "trippilot-passport-stamp",
         String(Date.now()),
       );
+
+      const successMessage =
+        assistantLanguage === "Hindi"
+          ? "आपकी यात्रा सफलतापूर्वक बन गई है।"
+          : assistantLanguage === "Punjabi"
+            ? "ਤੁਹਾਡੀ ਯਾਤਰਾ ਸਫਲਤਾਪੂਰਵਕ ਬਣ ਗਈ ਹੈ।"
+            : "Your trip has been created successfully.";
+
+      setMessages((currentMessages) => [
+        ...currentMessages,
+        {
+          from: "zoya",
+          text: successMessage,
+        },
+      ]);
+
+      if (zoyaOpen) {
+        speakZoya(
+          successMessage,
+          assistantLanguage,
+        );
+      }
+
       navigate("dashboard");
       window.scrollTo({
         top: 0,
@@ -3119,6 +3255,18 @@ export function useTripPilot(
       detectedLanguage,
     );
 
+    const currentTripDraft: SpokenTripDraft = {
+      from: form.from,
+      destination: form.destination,
+      start: form.start,
+      end: form.end,
+      travellers: form.travellers,
+      budget: form.budget,
+      travelType: form.travelType,
+      transport: form.transport,
+      preferences,
+    };
+
     const asksForHindi =
       /(hindi|हिंदी)[\s\S]{0,30}(baat|बात|speak|talk|बोल)|(baat|बात|speak|talk)[\s\S]{0,30}(hindi|हिंदी)/i.test(
         question,
@@ -3176,7 +3324,7 @@ export function useTripPilot(
     }
 
     const asksToChangeBudget =
-      /\b(change|update|set|replace|edit|correct)\b[\s\S]{0,45}\bbudget\b|\bbudget\b[\s\S]{0,45}\b(change|update|set|replace|edit|correct|to)\b|बजट[\s\S]{0,35}(बदल|कर दो|करें|रखो)|ਬਜਟ[\s\S]{0,35}(ਬਦਲ|ਕਰ ਦਿਓ|ਰੱਖੋ)/i.test(
+      /\b(change|update|set|replace|edit|correct)\b[\s\S]{0,45}\bbudget\b|\bbudget\b[\s\S]{0,45}\b(change|update|set|replace|edit|correct)\b|बजट[\s\S]{0,35}(बदल|कर दो|करें|रखो)|ਬਜਟ[\s\S]{0,35}(ਬਦਲ|ਕਰ ਦਿਓ|ਰੱਖੋ)/i.test(
         question,
       );
 
@@ -3188,6 +3336,9 @@ export function useTripPilot(
       const budgetNumber = Number(requestedBudget);
 
       if (Number.isFinite(budgetNumber) && budgetNumber > 0) {
+        const wasBudgetBlocked =
+          budgetStatus === "low" ||
+          Boolean(budgetWarning);
         const nextForm = {
           ...form,
           budget: requestedBudget,
@@ -3206,12 +3357,23 @@ export function useTripPilot(
         const formattedBudget = Number(
           requestedBudget,
         ).toLocaleString("en-IN");
-        const reply =
+        const changedReply =
           detectedLanguage === "Hindi"
             ? `होमपेज का बजट ${startingCurrency.symbol}${formattedBudget} कर दिया गया है।`
             : detectedLanguage === "Punjabi"
               ? `ਹੋਮਪੇਜ ਦਾ ਬਜਟ ${startingCurrency.symbol}${formattedBudget} ਕਰ ਦਿੱਤਾ ਗਿਆ ਹੈ।`
               : `Done. I changed the homepage trip budget to ${startingCurrency.symbol}${formattedBudget}.`;
+        const reply = wasBudgetBlocked
+          ? `${changedReply}\n\n${confirmationMessage(
+              detectedLanguage,
+              nextForm,
+            )}`
+          : changedReply;
+
+        if (wasBudgetBlocked) {
+          setAwaitingTripDetails(false);
+          setAwaitingTripConfirmation(true);
+        }
 
         setMessages((messages) => [
           ...messages,
@@ -3480,6 +3642,10 @@ export function useTripPilot(
       /\b(change|correct|replace|update|instead|not|note)\b|बदलो|बदल|सही|की जगह|नहीं|ਬਦਲੋ|ਸਹੀ|ਦੀ ਥਾਂ/i.test(
         question,
       );
+    const tripFieldCommand =
+      /\b(starting place|start(?:ing)? from|destination|departure|return|travellers?|travel style|transport|budget|preferences?|anything special)\b|शुरुआत|मंज़िल|जाने की तारीख|लौटने की तारीख|यात्री|बजट|ट्रैवल स्टाइल|ट्रांसपोर्ट/i.test(
+        question,
+      );
 
     const tripDetailSignals =
       question.match(
@@ -3528,34 +3694,13 @@ export function useTripPilot(
 
     if (awaitingTripConfirmation) {
       if (yesAnswer) {
-        const reply =
-          detectedLanguage === "Hindi"
-            ? "ठीक है, मैं आपकी यात्रा बना रही हूँ।"
-            : detectedLanguage === "Punjabi"
-              ? "ਠੀਕ ਹੈ, ਮੈਂ ਤੁਹਾਡੀ ਯਾਤਰਾ ਬਣਾ ਰਹੀ ਹਾਂ।"
-              : "Great, I’m creating your trip now.";
-
-        setMessages((messages) => [
-          ...messages,
-          { from: "zoya", text: reply },
-        ]);
-        if (voiceReply)
-          speakZoya(
-            reply,
-            detectedLanguage,
-          );
         setVoiceReply(false);
         setAwaitingTripConfirmation(false);
-        setSpokenTripDraft({});
-        setZoyaOpen(false);
+        setSpokenTripDraft(currentTripDraft);
 
-        window.setTimeout(() => {
-          const plannerForm =
-            document.getElementById(
-              "tripPlannerForm",
-            ) as HTMLFormElement | null;
-          plannerForm?.requestSubmit();
-        }, 200);
+        void planTrip({
+          preventDefault: () => {},
+        } as FormEvent);
         return;
       }
 
@@ -3589,11 +3734,26 @@ export function useTripPilot(
       !looksLikeTripDetails
     ) {
       const language = detectedLanguage;
-      const reply = tripQuestion(language);
-      setSpokenTripDraft({});
+      const requiredFields = [
+        ["starting place", currentTripDraft.from],
+        ["destination", currentTripDraft.destination],
+        ["departure date", currentTripDraft.start],
+        ["return date", currentTripDraft.end],
+        ["travellers", currentTripDraft.travellers],
+        ["budget", currentTripDraft.budget],
+        ["travel style", currentTripDraft.travelType],
+        ["transport", currentTripDraft.transport],
+      ];
+      const missing = requiredFields
+        .filter(([, value]) => !String(value || "").trim())
+        .map(([label]) => String(label));
+      const reply = missing.length
+        ? missingDetailsMessage(language, missing)
+        : confirmationMessage(language, form);
+      setSpokenTripDraft(currentTripDraft);
       setAssistantLanguage(language);
-      setAwaitingTripDetails(true);
-      setAwaitingTripConfirmation(false);
+      setAwaitingTripDetails(missing.length > 0);
+      setAwaitingTripConfirmation(missing.length === 0);
       navigate("planner");
       setMessages((messages) => [
         ...messages,
@@ -3612,7 +3772,8 @@ export function useTripPilot(
       awaitingTripDetails ||
       (awaitingTripConfirmation &&
         (correctionIntent || looksLikeTripDetails)) ||
-      (wantsNewTrip && looksLikeTripDetails)
+      (wantsNewTrip && looksLikeTripDetails) ||
+      (correctionIntent && tripFieldCommand)
     ) {
       try {
         const extractionResponse =
@@ -3626,7 +3787,7 @@ export function useTripPilot(
               },
               body: JSON.stringify({
                 mode: "extract",
-                question: `Extract trip-form details from the latest English, Hindi or Punjabi message. Return place names in English Latin letters even when spoken in Hindi or Punjabi. For a correction, return only the new corrected value, never the old value. Correct obvious speech-recognition spelling only when confident. Interpret "friends with me" as total travellers including the user. Infer Adventure from mountains, trekking or adventure activities and Relaxation from beaches or a peaceful trip. Convert dates to YYYY-MM-DD using year 2026 when omitted. Preferences are optional and must never be listed as missing. Current saved details: ${JSON.stringify(spokenTripDraft)}. Return ONLY compact JSON, no Markdown: {"from":"","destination":"","start":"","end":"","travellers":"","budget":"","travelType":"Adventure|Relaxation|Romantic|Family|Friends|Spiritual","transport":"Train|Flight|Bus|Car|Taxi","preferences":"","language":"English|Hindi|Punjabi","missing":[]}. Latest user speech: ${JSON.stringify(question)}`,
+                question: `Extract trip-form details from the latest English, Hindi or Punjabi message. Return place names in English Latin letters even when spoken in Hindi or Punjabi. For a correction, return only the new corrected value, never the old value. Correct obvious speech-recognition spelling only when confident. Interpret "friends with me" as total travellers including the user. Infer Adventure from mountains, trekking or adventure activities and Relaxation from beaches or a peaceful trip. Convert dates to YYYY-MM-DD using year 2026 when omitted. Preferences are optional and must never be listed as missing. Current homepage details: ${JSON.stringify(currentTripDraft)}. Return ONLY compact JSON, no Markdown: {"from":"","destination":"","start":"","end":"","travellers":"","budget":"","travelType":"Adventure|Relaxation|Romantic|Family|Friends|Spiritual","transport":"Train|Flight|Bus|Car|Taxi","preferences":"","language":"English|Hindi|Punjabi","missing":[]}. Latest user speech: ${JSON.stringify(question)}`,
               }),
             },
           );
@@ -3776,7 +3937,7 @@ export function useTripPilot(
           }),
         };
         const mergedDraft = {
-          ...spokenTripDraft,
+          ...currentTripDraft,
           ...latestDraft,
         };
         const nextForm = {
