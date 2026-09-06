@@ -19,6 +19,11 @@ export default function PassportStamp({
       aria-live="polite"
     >
       <div className={styles.passport}>
+        <div className={styles.stampTool}>
+          <div className={styles.handle} />
+          <div className={styles.stampBase} />
+        </div>
+
         <div className={styles.stamp}>
           <span>TRIPPILOT</span>
           <strong>TRIP APPROVED</strong>

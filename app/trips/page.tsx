@@ -163,7 +163,7 @@ export default function TripsPage() {
     if (passportStampStarted.current) {
       const repeatedEffectTimer = window.setTimeout(() => {
         setShowPassportStamp(false);
-      }, 2000);
+      }, 2500);
 
       return () => window.clearTimeout(repeatedEffectTimer);
     }
@@ -188,7 +188,7 @@ export default function TripsPage() {
 
     const timer = window.setTimeout(() => {
       setShowPassportStamp(false);
-    }, 2000);
+    }, 2500);
 
     return () => window.clearTimeout(timer);
   }, []);

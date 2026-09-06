@@ -1250,6 +1250,8 @@ export function useTripPilot(
         zoyaOpen,
         roomLocation,
         attractionQuery,
+        weatherLocation,
+        weatherData,
       }),
     );
   }
@@ -1436,6 +1438,12 @@ export function useTripPilot(
           setAttractionQuery(
             session.attractionQuery,
           );
+        if (session.weatherLocation)
+          setWeatherLocation(session.weatherLocation);
+        if (session.weatherData) {
+          setWeatherData(session.weatherData);
+          setWeatherLoading(false);
+        }
 
       }
 
@@ -1489,6 +1497,8 @@ export function useTripPilot(
     zoyaOpen,
     roomLocation,
     attractionQuery,
+    weatherLocation,
+    weatherData,
   ]);
 
   useEffect(() => {
@@ -1686,6 +1696,8 @@ export function useTripPilot(
       );
   }, []);
   useEffect(() => {
+    if (!sessionReady) return;
+
     const destination = form.destination.trim();
 
     if (!destination) return;
@@ -1697,7 +1709,7 @@ export function useTripPilot(
     return () => {
       window.clearTimeout(timer);
     };
-  }, [form.destination]);
+  }, [form.destination, sessionReady]);
   const current = useMemo(
     () =>
       generatedDays[
@@ -2262,6 +2274,28 @@ export function useTripPilot(
   ) {
     const cleanLocation = location.trim();
     if (!cleanLocation) return;
+
+    const cacheKey = "trippilot-weather-cache";
+    const normalizedLocation = cleanLocation.toLowerCase();
+
+    try {
+      const cachedValue = window.sessionStorage.getItem(cacheKey);
+      const cached = cachedValue ? JSON.parse(cachedValue) : null;
+
+      if (
+        cached?.location?.toLowerCase() === normalizedLocation &&
+        cached?.data &&
+        Date.now() - Number(cached.savedAt) < 30 * 60 * 1000
+      ) {
+        setWeatherLocation(cleanLocation);
+        setWeatherData(cached.data);
+        setWeatherLoading(false);
+        return;
+      }
+    } catch {
+      window.sessionStorage.removeItem(cacheKey);
+    }
+
     setWeatherLocation(cleanLocation);
     setWeatherLoading(true);
     try {
@@ -2273,6 +2307,14 @@ export function useTripPilot(
       if (!response.ok)
         throw new Error(data.error);
       setWeatherData(data);
+      window.sessionStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          location: cleanLocation,
+          data,
+          savedAt: Date.now(),
+        }),
+      );
     } catch {
       setWeatherData(null);
     } finally {
@@ -2338,9 +2380,7 @@ export function useTripPilot(
     }
 
     setLoading(true);
-    void loadWeather(
-      form.destination,
-    );
+    void loadWeather(form.destination);
     try {
       const placesResponse = await fetch(
         `${API_BASE}/api/places?location=${encodeURIComponent(form.destination)}`,
@@ -2906,16 +2946,19 @@ export function useTripPilot(
 
     if (!location) return;
 
-    navigate("attractions");
     setAttractionQuery(location);
     setAttractionSearch(location);
+    window.sessionStorage.setItem(
+      "trippilot-featured-attraction",
+      location,
+    );
+    navigate("attractions");
 
     window.scrollTo({
       top: 0,
       behavior: "smooth",
     });
 
-    await loadAttractions(location);
   }
   function openFeaturedDestination(
     destination: string,
