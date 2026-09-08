@@ -1,12 +1,6 @@
 "use client";
 
 import {
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import PassportStamp from "../components/PassportStamp";
-import {
   TripPilotShell,
   useTripPilot,
   Calendar,
@@ -16,9 +10,6 @@ import {
 import styles from "./TripsPage.module.css";
 
 export default function TripsPage() {
-  const [showPassportStamp, setShowPassportStamp] =
-    useState(false);
-  const passportStampStarted = useRef(false);
   const controller = useTripPilot("dashboard");
   const {
     router,
@@ -159,50 +150,8 @@ export default function TripsPage() {
     startZoyaVoice
   } = controller;
 
-  useEffect(() => {
-    if (passportStampStarted.current) return;
-
-    const queryToken = new URLSearchParams(
-      window.location.search,
-    ).get("stamp");
-    const storedValue = window.sessionStorage.getItem(
-      "trippilot-passport-stamp",
-    );
-    const triggerValue = queryToken || storedValue;
-
-    window.sessionStorage.removeItem(
-      "trippilot-passport-stamp",
-    );
-
-    if (queryToken) {
-      window.history.replaceState(
-        window.history.state,
-        "",
-        "/trips",
-      );
-    }
-
-    const createdAt = Number(triggerValue);
-    const wasJustCreated =
-      Number.isFinite(createdAt) &&
-      Date.now() - createdAt < 30000;
-
-    if (!wasJustCreated) return;
-
-    passportStampStarted.current = true;
-    setShowPassportStamp(true);
-
-    window.setTimeout(() => {
-      setShowPassportStamp(false);
-    }, 3000);
-  }, []);
-
   return (
     <TripPilotShell controller={controller}>
-      <PassportStamp
-        visible={showPassportStamp}
-        destination={form.destination}
-      />
       <section className="dashboard">
             <div className="dashboardMain">
               <div className="heroRow">
