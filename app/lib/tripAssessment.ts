@@ -94,6 +94,69 @@ function domesticDistance(from: string, destination: string) {
   return 6371 * 2 * Math.atan2(Math.sqrt(calculation), Math.sqrt(1 - calculation));
 }
 
+type InternationalCostProfile = {
+  flightPerTraveller: number;
+  hotelPerRoomNight: number;
+  foodPerTravellerDay: number;
+  localFaresPerTravellerDay: number;
+  activitiesPerTravellerDay: number;
+  visaInsurancePerTraveller: number;
+};
+
+function internationalCostProfile(
+  destination: string,
+  currencyCode: string,
+): InternationalCostProfile {
+  const place = destination.toLowerCase();
+
+  if (/bali|indonesia|ubud|jakarta/.test(place)) {
+    return {
+      flightPerTraveller: 32000,
+      hotelPerRoomNight: 4000,
+      foodPerTravellerDay: 1500,
+      localFaresPerTravellerDay: 700,
+      activitiesPerTravellerDay: 1200,
+      visaInsurancePerTraveller: 4000,
+    };
+  }
+
+  if (/london|england|united kingdom|\buk\b/.test(place)) {
+    return {
+      flightPerTraveller: 60000,
+      hotelPerRoomNight: 11000,
+      foodPerTravellerDay: 3200,
+      localFaresPerTravellerDay: 1800,
+      activitiesPerTravellerDay: 2000,
+      visaInsurancePerTraveller: 15000,
+    };
+  }
+
+  const profilesByCurrency: Record<string, InternationalCostProfile> = {
+    NPR: { flightPerTraveller: 18000, hotelPerRoomNight: 3500, foodPerTravellerDay: 1200, localFaresPerTravellerDay: 600, activitiesPerTravellerDay: 900, visaInsurancePerTraveller: 2000 },
+    LKR: { flightPerTraveller: 26000, hotelPerRoomNight: 4500, foodPerTravellerDay: 1500, localFaresPerTravellerDay: 700, activitiesPerTravellerDay: 1100, visaInsurancePerTraveller: 3500 },
+    THB: { flightPerTraveller: 30000, hotelPerRoomNight: 4500, foodPerTravellerDay: 1600, localFaresPerTravellerDay: 800, activitiesPerTravellerDay: 1400, visaInsurancePerTraveller: 4000 },
+    MYR: { flightPerTraveller: 28000, hotelPerRoomNight: 4500, foodPerTravellerDay: 1600, localFaresPerTravellerDay: 800, activitiesPerTravellerDay: 1300, visaInsurancePerTraveller: 4000 },
+    VND: { flightPerTraveller: 33000, hotelPerRoomNight: 4000, foodPerTravellerDay: 1400, localFaresPerTravellerDay: 650, activitiesPerTravellerDay: 1200, visaInsurancePerTraveller: 4500 },
+    AED: { flightPerTraveller: 28000, hotelPerRoomNight: 7000, foodPerTravellerDay: 2200, localFaresPerTravellerDay: 1200, activitiesPerTravellerDay: 1800, visaInsurancePerTraveller: 6500 },
+    SGD: { flightPerTraveller: 35000, hotelPerRoomNight: 9000, foodPerTravellerDay: 2500, localFaresPerTravellerDay: 1200, activitiesPerTravellerDay: 2000, visaInsurancePerTraveller: 4500 },
+    EUR: { flightPerTraveller: 55000, hotelPerRoomNight: 9000, foodPerTravellerDay: 2800, localFaresPerTravellerDay: 1500, activitiesPerTravellerDay: 1900, visaInsurancePerTraveller: 12000 },
+    CHF: { flightPerTraveller: 58000, hotelPerRoomNight: 12000, foodPerTravellerDay: 3800, localFaresPerTravellerDay: 2200, activitiesPerTravellerDay: 2400, visaInsurancePerTraveller: 12000 },
+    USD: { flightPerTraveller: 70000, hotelPerRoomNight: 10500, foodPerTravellerDay: 3200, localFaresPerTravellerDay: 1800, activitiesPerTravellerDay: 2200, visaInsurancePerTraveller: 15000 },
+    AUD: { flightPerTraveller: 70000, hotelPerRoomNight: 9500, foodPerTravellerDay: 3000, localFaresPerTravellerDay: 1700, activitiesPerTravellerDay: 2100, visaInsurancePerTraveller: 14000 },
+    CAD: { flightPerTraveller: 75000, hotelPerRoomNight: 9500, foodPerTravellerDay: 3000, localFaresPerTravellerDay: 1700, activitiesPerTravellerDay: 2100, visaInsurancePerTraveller: 15000 },
+    JPY: { flightPerTraveller: 48000, hotelPerRoomNight: 7500, foodPerTravellerDay: 2200, localFaresPerTravellerDay: 1400, activitiesPerTravellerDay: 1700, visaInsurancePerTraveller: 5000 },
+  };
+
+  return profilesByCurrency[currencyCode] || {
+    flightPerTraveller: 50000,
+    hotelPerRoomNight: 7500,
+    foodPerTravellerDay: 2400,
+    localFaresPerTravellerDay: 1200,
+    activitiesPerTravellerDay: 1700,
+    visaInsurancePerTraveller: 8000,
+  };
+}
+
 export function assessTripBudget(
   form: PlannerForm,
   startingCurrency: CurrencyInfo,
@@ -115,28 +178,45 @@ export function assessTripBudget(
     Taxi: { short: 6500, medium: 11000, long: 18000 },
   };
 
-  const internationalTransport: Record<string, number> = {
-    Train: 65000,
-    Bus: 60000,
-    Flight: 75000,
-    Car: 90000,
-    Taxi: 110000,
-  };
+  const internationalProfile = internationalCostProfile(
+    form.destination,
+    destinationCurrency.code,
+  );
 
   const transportPerTraveller = international
-    ? internationalTransport[form.transport] || 75000
+    ? internationalProfile.flightPerTraveller
     : domesticTransport[form.transport]?.[distanceBand] || 4500;
 
   const transport = transportPerTraveller * travellers;
-  const hotelPerRoom = international ? 10000 : 2500;
+  const hotelPerRoom = international
+    ? internationalProfile.hotelPerRoomNight
+    : 2500;
   const hotel = hotelPerRoom * rooms * nights;
-  const food = (international ? 3500 : 1000) * travellers * days;
-  const localFares = (international ? 1800 : 500) * travellers * days;
-  const activities = (international ? 2500 : 600) * travellers * days;
-  const subtotal = transport + hotel + food + localFares + activities;
-  const minimumBudget = roundBudget(subtotal, startingCurrency.code);
-  const recommendedBudget = roundBudget(subtotal * 1.15, startingCurrency.code);
-  const other = Math.max(0, recommendedBudget - subtotal);
+  const foodPerDay = international
+    ? internationalProfile.foodPerTravellerDay
+    : 1000;
+  const localFaresPerDay = international
+    ? internationalProfile.localFaresPerTravellerDay
+    : 500;
+  const activitiesPerDay = international
+    ? internationalProfile.activitiesPerTravellerDay
+    : 600;
+  const food = foodPerDay * travellers * days;
+  const localFares = localFaresPerDay * travellers * days;
+  const activities = activitiesPerDay * travellers * days;
+  const visaInsurance = international
+    ? internationalProfile.visaInsurancePerTraveller * travellers
+    : 0;
+  const coreSubtotal = transport + hotel + food + localFares + activities;
+  const minimumBudget = roundBudget(
+    coreSubtotal + visaInsurance,
+    startingCurrency.code,
+  );
+  const recommendedBudget = roundBudget(
+    (coreSubtotal + visaInsurance) * 1.15,
+    startingCurrency.code,
+  );
+  const other = Math.max(0, recommendedBudget - coreSubtotal);
   const enteredBudget = Math.max(0, Number(form.budget) || 0);
 
   return {
