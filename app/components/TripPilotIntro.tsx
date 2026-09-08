@@ -1,61 +1,60 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-} from "react";
+import { useEffect, useState } from "react";
 import styles from "./TripPilotIntro.module.css";
 
-const INTRO_KEY = "trippilot-intro-active";
+const INTRO_SESSION_KEY = "trippilot-intro-seen";
 
 export default function TripPilotIntro() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const returningFromAnotherPage =
-      window.sessionStorage.getItem(INTRO_KEY) === "yes";
+    const alreadySeen = window.sessionStorage.getItem(
+      INTRO_SESSION_KEY,
+    );
 
-    if (returningFromAnotherPage) {
+    if (alreadySeen) {
       setVisible(false);
       return;
     }
 
-    window.sessionStorage.setItem(INTRO_KEY, "yes");
-    document.body.style.overflow = "hidden";
+    window.sessionStorage.setItem(INTRO_SESSION_KEY, "yes");
+    setVisible(true);
+  }, []);
 
-    const allowIntroAfterRefresh = () => {
-      window.sessionStorage.removeItem(INTRO_KEY);
-    };
+  useEffect(() => {
+    if (!visible) return;
+
+    document.body.style.overflow = "hidden";
 
     const timer = window.setTimeout(() => {
       setVisible(false);
       document.body.style.overflow = "";
     }, 4000);
 
-    window.addEventListener(
-      "beforeunload",
-      allowIntroAfterRefresh,
-    );
-
     return () => {
       window.clearTimeout(timer);
       document.body.style.overflow = "";
-      window.removeEventListener(
-        "beforeunload",
-        allowIntroAfterRefresh,
-      );
     };
-  }, []);
+  }, [visible]);
 
   function closeIntro() {
     setVisible(false);
     document.body.style.overflow = "";
   }
 
-  if (!visible) return null;
+  if (visible !== true) return null;
 
   return (
-    <div className={styles.intro}>
+    <div
+      className={styles.intro}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 20000,
+        background: "#eef3ff",
+      }}
+    >
       <button
         className={styles.skip}
         onClick={closeIntro}

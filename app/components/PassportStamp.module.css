@@ -1,204 +1,203 @@
 .overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
-  display: grid;
-  place-items: center;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
   pointer-events: none;
-  background:
-    radial-gradient(
-      circle,
-      rgba(70, 102, 237, 0.18),
-      transparent 42%
-    ),
-    rgba(15, 23, 42, 0.08);
-  animation: overlayLife 2.5s ease forwards;
+  background: rgba(16, 24, 48, 0.2);
+  animation: tripPilotOverlay 3s linear both !important;
 }
 
 .passport {
   position: relative;
-  width: 340px;
-  height: 380px;
-  color: #25252b;
+  width: 360px;
+  height: 430px;
 }
 
 .stampTool {
   position: absolute;
-  z-index: 2;
-  top: 30px;
+  top: 0;
   left: 50%;
-  width: 230px;
-  height: 235px;
-  transform: translate(-50%, -430px);
-  transform-origin: center bottom;
-  animation: stampToolPress 2.5s cubic-bezier(0.22, 0.75, 0.3, 1) forwards;
-  will-change: transform, opacity;
+  z-index: 3;
+  width: 240px;
+  height: 250px;
+  opacity: 1;
+  transform: translate(75vw, 80px) rotate(90deg);
+  transform-origin: center center;
+  animation: tripPilotStampPress 3s cubic-bezier(0.2, 0.8, 0.25, 1) both !important;
 }
 
 .handle {
   position: absolute;
   top: 0;
   left: 50%;
-  width: 92px;
-  height: 150px;
-  border-radius: 45px 45px 22px 22px;
+  width: 96px;
+  height: 158px;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  border-radius: 48px 48px 22px 22px;
   transform: translateX(-50%);
-  background: linear-gradient(90deg, #15244c, #4666ed 52%, #162552);
-  box-shadow: inset -10px 0 18px rgba(4, 12, 40, 0.28), 0 18px 30px rgba(25, 43, 100, 0.22);
+  background: linear-gradient(90deg, #14244d, #5272ff 50%, #172859);
+  box-shadow: inset -12px 0 18px rgba(5, 14, 45, 0.3), 0 22px 35px rgba(16, 35, 100, 0.34);
 }
 
 .handle::after {
-  content: "";
   position: absolute;
   left: 50%;
-  bottom: -22px;
-  width: 142px;
-  height: 48px;
-  border-radius: 13px;
+  bottom: -28px;
+  width: 150px;
+  height: 52px;
+  content: "";
+  border-radius: 14px;
   transform: translateX(-50%);
-  background: linear-gradient(180deg, #e9eefc, #9ba9cf 55%, #62739f);
-  box-shadow: inset 0 4px 8px rgba(255, 255, 255, 0.8), 0 8px 15px rgba(25, 43, 100, 0.2);
+  background: linear-gradient(180deg, #f7f9ff, #9eacd3 58%, #5d6f9e);
 }
 
 .stampBase {
   position: absolute;
   left: 50%;
   bottom: 0;
-  width: 230px;
-  height: 72px;
+  width: 240px;
+  height: 76px;
+  border: 3px solid rgba(255, 255, 255, 0.45);
   border-radius: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(180deg, #5d79f1, #2949c7 58%, #17318f);
-  box-shadow: inset 0 8px 10px rgba(255, 255, 255, 0.28), 0 16px 24px rgba(25, 43, 100, 0.28);
+  background: linear-gradient(180deg, #7890fb, #3c5cdb 56%, #19338f);
+  box-shadow: inset 0 9px 12px rgba(255, 255, 255, 0.3), 0 18px 28px rgba(20, 42, 112, 0.34);
 }
 
 .stamp {
-  width: 270px;
-  height: 270px;
-  border: 10px double #4666ed;
-  border-radius: 50%;
-  display: grid;
-  place-content: center;
-  gap: 10px;
-  text-align: center;
-  color: #4666ed;
-  text-transform: uppercase;
   position: absolute;
   left: 50%;
-  bottom: 48px;
-  transform: translateX(-50%) rotate(-9deg) scale(0.82);
-  opacity: 1;
-  filter: none;
-  animation: stampImprint 3.5s ease forwards;
-  will-change: transform, opacity;
-  box-shadow:
-    inset 0 0 0 6px rgba(70, 102, 237, 0.12),
-    0 18px 50px rgba(35, 55, 130, 0.18);
+  bottom: 42px;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  width: 275px;
+  height: 275px;
+  gap: 10px;
+  color: #4666ed;
+  text-align: center;
+  text-transform: uppercase;
+  opacity: 0;
+  border: 10px double currentColor;
+  border-radius: 50%;
+  transform: translateX(-50%) rotate(-9deg) scale(0.7);
+  box-shadow: inset 0 0 0 6px rgba(70, 102, 237, 0.13), 0 18px 50px rgba(35, 55, 130, 0.2);
+  animation: tripPilotStampMark 3s ease-out both !important;
 }
 
 .stamp::before,
 .stamp::after {
   content: "✦  ✈  ✦";
+  font-size: 20px;
   letter-spacing: 8px;
-  font-size: 19px;
 }
 
 .stamp strong {
   padding: 10px 16px;
-  border-top: 3px solid currentColor;
-  border-bottom: 3px solid currentColor;
   font-size: 25px;
   letter-spacing: 2px;
+  border-top: 3px solid currentColor;
+  border-bottom: 3px solid currentColor;
 }
 
 .stamp span {
-  max-width: 210px;
+  display: block;
+  max-width: 215px;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 13px;
   font-weight: 800;
   letter-spacing: 2px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .passport p {
   position: absolute;
   bottom: 0;
   width: 100%;
-  text-align: center;
   margin: 0;
+  color: #202536;
   font-size: 16px;
-  font-weight: 700;
-  opacity: 1;
-  animation: captionArrival 2.5s ease forwards;
+  font-weight: 800;
+  text-align: center;
+  opacity: 0;
+  animation: tripPilotCaption 3s ease both !important;
 }
 
-@keyframes stampToolPress {
+@keyframes tripPilotStampPress {
   0% {
     opacity: 0;
-    transform: translate(-50%, -430px) rotate(-4deg);
+    transform: translate(75vw, 80px) rotate(90deg) scaleY(1);
   }
-
   8% {
     opacity: 1;
   }
-
-  28% {
+  35% {
+    transform: translate(110px, 80px) rotate(90deg) scaleY(1);
+  }
+  43% {
+    transform: translate(64px, 80px) rotate(90deg) scaleY(0.86);
+  }
+  50% {
+    transform: translate(116px, 80px) rotate(90deg) scaleY(1);
+  }
+  72% {
     opacity: 1;
-    transform: translate(-50%, 18px) rotate(1deg) scaleY(1);
+    transform: translate(210px, -120px) rotate(55deg) scaleY(1);
   }
-
-  36% {
-    transform: translate(-50%, 58px) rotate(0) scaleY(0.94);
-  }
-
-  44% {
-    transform: translate(-50%, 4px) rotate(-1deg) scaleY(1);
-  }
-
-  56% {
-    opacity: 1;
-    transform: translate(-50%, -100px) rotate(-2deg);
-  }
-
   100% {
     opacity: 0;
-    transform: translate(-50%, -430px) rotate(-4deg);
+    transform: translate(-50%, -75vh) rotate(0deg) scaleY(1);
   }
 }
 
-@keyframes stampImprint {
+@keyframes tripPilotStampMark {
   0%,
-  34% {
-    transform: translateX(-50%) rotate(-9deg) scale(0.82);
+  41% {
+    opacity: 0;
+    transform: translateX(-50%) rotate(-9deg) scale(0.7);
   }
-
-  38% {
-    transform: translateX(-50%) rotate(-9deg) scale(1.08);
+  44% {
+    opacity: 1;
+    transform: translateX(-50%) rotate(-9deg) scale(1.12);
   }
-
-  44%,
-  91% {
+  51%,
+  88% {
+    opacity: 1;
     transform: translateX(-50%) rotate(-9deg) scale(1);
   }
-
   100% {
-    transform: translateX(-50%) rotate(-9deg) scale(0.97);
+    opacity: 0;
+    transform: translateX(-50%) rotate(-9deg) scale(0.96);
   }
 }
 
-@keyframes captionArrival {
-  0% { transform: translateY(8px); }
-  42%, 90% { transform: translateY(0); }
-  100% { transform: translateY(-2px); }
+@keyframes tripPilotCaption {
+  0%,
+  50% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  58%,
+  88% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
 }
 
-@keyframes overlayLife {
+@keyframes tripPilotOverlay {
   0%,
-  91% {
+  88% {
     opacity: 1;
   }
-
   100% {
     opacity: 0;
     visibility: hidden;

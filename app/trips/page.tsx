@@ -162,18 +162,30 @@ export default function TripsPage() {
   useEffect(() => {
     if (passportStampStarted.current) return;
 
+    const queryToken = new URLSearchParams(
+      window.location.search,
+    ).get("stamp");
     const storedValue = window.sessionStorage.getItem(
       "trippilot-passport-stamp",
     );
+    const triggerValue = queryToken || storedValue;
 
     window.sessionStorage.removeItem(
       "trippilot-passport-stamp",
     );
 
-    const createdAt = Number(storedValue);
+    if (queryToken) {
+      window.history.replaceState(
+        window.history.state,
+        "",
+        "/trips",
+      );
+    }
+
+    const createdAt = Number(triggerValue);
     const wasJustCreated =
       Number.isFinite(createdAt) &&
-      Date.now() - createdAt < 10000;
+      Date.now() - createdAt < 30000;
 
     if (!wasJustCreated) return;
 
@@ -182,7 +194,7 @@ export default function TripsPage() {
 
     window.setTimeout(() => {
       setShowPassportStamp(false);
-    }, 2600);
+    }, 3000);
   }, []);
 
   return (
