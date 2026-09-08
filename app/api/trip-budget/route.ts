@@ -130,7 +130,7 @@ function tripDays(start: string, end: string) {
 }
 
 function costMultiplier(countryCode: string) {
-  if (veryHighCostCountries.has(countryCode)) return 2.15;
+  if (veryHighCostCountries.has(countryCode)) return 2.30;
   if (highCostCountries.has(countryCode)) return 1.7;
   if (budgetCountries.has(countryCode)) return 0.82;
   return 1.15;
@@ -232,7 +232,7 @@ export async function POST(request: NextRequest) {
       coreTotal + visaInsurance,
     );
     const recommendedBudget = roundToFiveHundred(
-      minimumBudget * 1.15,
+      minimumBudget * 1.30,
     );
     const other = recommendedBudget - coreTotal;
     const enteredBudget = Math.max(0, Number(body.budget) || 0);
