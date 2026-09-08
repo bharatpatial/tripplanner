@@ -1511,9 +1511,18 @@ export function useTripPilot(
       return;
 
     saveTripSession(pendingRoute);
-    router.push(
-      routePath[pendingRoute],
-    );
+    const stampToken =
+      pendingRoute === "dashboard"
+        ? window.sessionStorage.getItem(
+            "trippilot-passport-stamp",
+          )
+        : null;
+    const nextPath =
+      pendingRoute === "dashboard" && stampToken
+        ? `/trips?stamp=${encodeURIComponent(stampToken)}`
+        : routePath[pendingRoute];
+
+    router.push(nextPath);
     setPendingRoute(null);
   }, [
     pendingRoute,
@@ -1587,16 +1596,17 @@ export function useTripPilot(
     });
   }
 
-  const startingCurrency = useMemo(
-    () => findTripCurrency(form.from),
-    [form.from],
-  );
+ const startingCurrency = useMemo(
+  () => findTripCurrency(form.from),
+  [form.from],
+);
 
-  const destinationCurrency = useMemo(
-    () =>
-      findTripCurrency(form.destination),
-    [form.destination],
-  );
+const destinationCurrency = useMemo(
+  () => findTripCurrency(
+    form.destination,
+  ),
+  [form.destination],
+);
 
   useEffect(() => {
     if (
@@ -2467,11 +2477,53 @@ export function useTripPilot(
       return;
     }
 
-    const assessment = assessTripBudget(
+    let assessment = assessTripBudget(
       form,
       startingCurrency,
       destinationCurrency,
     );
+
+    let worldwideTransportWarning = "";
+
+    if (startingCurrency.code === "INR") {
+      try {
+        const budgetResponse = await fetch(
+          `${API_BASE}/api/trip-budget`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              ...form,
+              transport:
+                startingCurrency.code !==
+                destinationCurrency.code
+                  ? "Flight"
+                  : form.transport,
+            }),
+          },
+        );
+        const worldwideAssessment =
+          await budgetResponse.json();
+
+        if (
+          budgetResponse.ok &&
+          Number.isFinite(
+            worldwideAssessment.recommendedBudget,
+          )
+        ) {
+          assessment = worldwideAssessment;
+          worldwideTransportWarning =
+            worldwideAssessment.transportWarning || "";
+        }
+      } catch (error) {
+        console.warn(
+          "Using local budget estimate:",
+          error,
+        );
+      }
+    }
 
     if (assessment.isLow) {
       setBudgetStatus("low");
@@ -2481,11 +2533,13 @@ export function useTripPilot(
       return;
     }
 
-    const modeWarning = getTransportWarning(
-      form,
-      startingCurrency,
-      destinationCurrency,
-    );
+    const modeWarning =
+      worldwideTransportWarning ||
+      getTransportWarning(
+        form,
+        startingCurrency,
+        destinationCurrency,
+      );
 
     if (modeWarning) {
       setTransportWarning(modeWarning);
