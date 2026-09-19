@@ -13,6 +13,8 @@ import {
   assessTripBudget,
   getTransportWarning,
 } from "../lib/tripAssessment";
+import { useAuth } from "./AuthContext";
+import { saveTripToFirestore } from "../lib/tripFirestore";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
@@ -1066,6 +1068,7 @@ export function useTripPilot(
   initialScreen: AppScreen,
 ) {
   const router = useRouter();
+  const auth = useAuth();
   const [screen, setScreen] =
     useState<AppScreen>(initialScreen);
   const [sessionReady, setSessionReady] =
@@ -2573,7 +2576,7 @@ const destinationCurrency = useMemo(
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "");
       const seenVerifiedPlaces = new Set<string>();
-      const touristPlaceNames = allVerifiedPlaces
+      const touristPlaceNames: string[] = allVerifiedPlaces
         .filter((place: any) => {
         const title = String(place.title).trim();
         const key = normalizedPlaceKey(title);
@@ -2600,8 +2603,8 @@ const destinationCurrency = useMemo(
           `Only ${verifiedPlaceNames.length} unique verified tourist attractions were found in ${form.destination}. Try a shorter trip or a more specific destination.`,
         );
       }
-      const verifiedPlaceLookup = new Map(
-        verifiedPlaceNames.map((place) => [
+      const verifiedPlaceLookup = new Map<string, string>(
+        verifiedPlaceNames.map((place: string) => [
           place.toLowerCase().replace(/[^a-z0-9]/g, ""),
           place,
         ]),
@@ -2647,7 +2650,7 @@ const destinationCurrency = useMemo(
             preferences,
             verifiedPlaces: verifiedPlaceNames
               .slice(0, 6)
-              .map((name) => ({ name })),
+              .map((name: string) => ({ name })),
             requirements:
               `Write every user-facing title, summary, tip and timeline event in ${assistantLanguage}. Use only that language throughout the itinerary. Create exactly ${tripDuration} day objects, one for every travel date, maximum 15 days. Use only verifiedPlaces. The selected travel style is ${form.travelType}; make the pace, activities, food and experiences clearly match this style. The user's special request is: "${preferences.trim() || "No additional request"}". Treat this as an important instruction and include it throughout the itinerary whenever realistic and safe. Treat ${form.transport} as the preferred primary transport, not the only allowed transport. Use it for the largest practical part of the route. If it cannot directly reach ${form.destination}, connect through the nearest practical airport, railway station, bus terminal or port and add any required flight, train, bus, ferry, taxi or local transfer. Never reject the trip merely because one transport cannot complete every segment. On Day 1 include bookingOrigin, bookingDestination and onwardTransfer. bookingOrigin must be the practical station, airport or terminal serving ${form.from}. bookingDestination must be the real bookable major station, airport or terminal reached by ${form.transport}. If ${form.destination} has no direct ${form.transport} access, never use the final city as bookingDestination; use the best-known practical nearby hub and explain the remaining connection to ${form.destination} in onwardTransfer and the Day 1 summary. Never invent a station or airport. Clearly explain connections without inventing schedules or service numbers. Every day must include day, time, place, title, summary, tips, timeline, estimatedCost and expenses.Every summary must contain exactly 8 to 10 numbered itinerary steps. Put every step on a separate line using \n. Include morning, afternoon and evening activities, meals, transfers, rest time and practical instructions. Never return the complete day as one short paragraph.Every summary must contain exactly 8 to 10 numbered itinerary steps. Put every step on a separate line using \n. Include morning, afternoon and evening activities, meals, transfers, rest time and practical instructions. Never return the complete day as one short paragraph. tips must be an array of exactly 3 short tips tied to that day's actual activities: the best time for a named activity, specific booking or access advice, and relevant weather, clothing, food or local-transport advice. Every tip must mention an activity or situation unique to its day. Never reuse the same tip template on another day, and changing only the place name does not make a tip unique. timeline must contain 2 to 4 events with time, title and category. category must be travel, stay, activity or food. expenses must contain realistic estimated amounts labelled Travel, Hotel, Local fares, Food, Activities and Other when applicable. estimatedCost must equal the total of that day's expenses for all ${form.travellers} travellers together.Calculate costs for all travellers together. Transport must include the outward and return journeys. Hotel must cover every night and use one room for every two travellers. Food, activities and local fares must be multiplied by the number of travellers and trip days where applicable. Add a 10 percent safety buffer under Other. Never lower costs merely to fit the entered budget. All costs must use ${startingCurrency.code}, the starting-location currency. Do not force estimates to fit the user's budget; return reasonable estimates so TripPilot can warn when the budget is too low.`,
             detailRequirements:
@@ -2684,7 +2687,7 @@ const destinationCurrency = useMemo(
               .toLowerCase()
               .replace(/[^a-z0-9]/g, "");
             const verifiedRawPlace = verifiedPlaceLookup.get(normalizedPlace);
-            const unusedFallback = verifiedPlacePool.find((place) => {
+            const unusedFallback = verifiedPlacePool.find((place: string) => {
               const key = place.toLowerCase().replace(/[^a-z0-9]/g, "");
               return !usedDayPlaceKeys.has(key);
             });
@@ -3041,6 +3044,21 @@ const destinationCurrency = useMemo(
       );
       setActiveDay(1);
       setCalendarDate(form.start);
+      if (auth.user) {
+        try {
+          await saveTripToFirestore(auth.user.uid, {
+            form,
+            preferences,
+            itinerary: normalizedDays,
+            attractions: placesData.places,
+            language: assistantLanguage,
+            recommendedBudget: assessment.recommendedBudget,
+            budgetBreakdown: assessment.breakdown,
+          });
+        } catch (saveError) {
+          console.warn("Trip created locally but could not be saved to Firestore:", saveError);
+        }
+      }
       window.sessionStorage.setItem(
         "trippilot-passport-stamp",
         String(Date.now()),
@@ -4014,7 +4032,7 @@ const destinationCurrency = useMemo(
             mergedDraft.transport ||
             form.transport,
         };
-        const requiredMissing = [
+        const requiredMissing: string[] = [
           ["starting place", mergedDraft.from],
           ["destination", mergedDraft.destination],
           ["departure date", mergedDraft.start],
@@ -4028,7 +4046,7 @@ const destinationCurrency = useMemo(
             ([, value]) =>
               !String(value || "").trim(),
           )
-          .map(([label]) => label);
+          .map(([label]) => String(label));
         const missing = requiredMissing;
 
         setAssistantLanguage(language);
@@ -4331,6 +4349,7 @@ const destinationCurrency = useMemo(
 
   
   return {
+    auth,
     router,
     screen,
     setScreen,
@@ -4481,6 +4500,7 @@ export function TripPilotShell({
   children: ReactNode;
 }) {
   const {
+    auth,
     router,
     screen,
     setScreen,
@@ -4816,8 +4836,12 @@ export function TripPilotShell({
                 setAuthOpen(true)
               }
             >
-              <span>Explorer</span>
-              <i>E</i>
+              <span>{auth.user?.displayName || "Explorer"}</span>
+              <i>
+                {(auth.user?.displayName || auth.user?.email || "E")
+                  .charAt(0)
+                  .toUpperCase()}
+              </i>
             </button>
           </div>
         </header>
@@ -4940,79 +4964,94 @@ export function TripPilotShell({
               ×
             </button>
             <Logo />
-            <h2>
-              {signup
-                ? "Create your TripPilot account"
-                : "Welcome back to TripPilot"}
-            </h2>
-            <p>
-              Save every journey and let
-              Zoya remember your travel
-              style.
-            </p>
-            <button
-              className="googleSignIn"
-              onClick={() =>
-                setAuthNotice(
-                  "Google sign-in requires a Google OAuth Client ID and this site must be added as an authorized JavaScript origin.",
-                )
-              }
-            >
-              <span>G</span> Continue with
-              Google
-            </button>
-            {authNotice && (
-              <p className="authNotice">
-                {authNotice}
-              </p>
+            {auth.user ? (
+              <>
+                <h2>{auth.user.displayName || "TripPilot Explorer"}</h2>
+                <p>{auth.user.email}</p>
+                <p>Your newly generated trips are saved securely in Firestore.</p>
+                <button
+                  onClick={async () => {
+                    await auth.logout();
+                    setAuthNotice("");
+                    setAuthOpen(false);
+                  }}
+                >
+                  Log out
+                </button>
+              </>
+            ) : (
+              <>
+                <h2>
+                  {signup
+                    ? "Create your TripPilot account"
+                    : "Welcome back to TripPilot"}
+                </h2>
+                <p>Save every journey and let Zoya remember your travel style.</p>
+                <button
+                  className="googleSignIn"
+                  type="button"
+                  onClick={async () => {
+                    setAuthNotice("");
+                    if (!auth.configured) {
+                      setAuthNotice("Add your Firebase web configuration to .env.local, then restart the development server.");
+                      return;
+                    }
+                    try {
+                      await auth.googleSignIn();
+                      setAuthOpen(false);
+                    } catch (error: any) {
+                      setAuthNotice(error.message || "Google sign-in failed.");
+                    }
+                  }}
+                >
+                  <span>G</span> Continue with Google
+                </button>
+                {authNotice && <p className="authNotice">{authNotice}</p>}
+                <div className="authDivider">
+                  <i /> or use your email <i />
+                </div>
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setAuthNotice("");
+                    if (!auth.configured) {
+                      setAuthNotice("Add your Firebase web configuration to .env.local, then restart the development server.");
+                      return;
+                    }
+                    const values = new FormData(e.currentTarget);
+                    const name = String(values.get("name") || "");
+                    const email = String(values.get("email") || "");
+                    const password = String(values.get("password") || "");
+                    try {
+                      if (signup) await auth.emailSignUp(name, email, password);
+                      else await auth.emailSignIn(email, password);
+                      setAuthOpen(false);
+                    } catch (error: any) {
+                      setAuthNotice(error.message || "Authentication failed.");
+                    }
+                  }}
+                >
+                  {signup && (
+                    <input name="name" placeholder="Full name" required />
+                  )}
+                  <input name="email" type="email" placeholder="Email address" required />
+                  <input
+                    name="password"
+                    type="password"
+                    placeholder="Password (minimum 6 characters)"
+                    minLength={6}
+                    required
+                  />
+                  <button>{signup ? "Create account" : "Log in"}</button>
+                </form>
+                <small>
+                  {signup ? "Already have an account? " : "New to TripPilot? "}
+                  <button type="button" onClick={() => setSignup(!signup)}>
+                    {signup ? "Log in" : "Create account"}
+                  </button>
+                </small>
+              </>
             )}
-            <div className="authDivider">
-              <i />
-              or use your email
-              <i />
-            </div>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                setAuthOpen(false);
-              }}
-            >
-              {signup && (
-                <input
-                  placeholder="Full name"
-                  required
-                />
-              )}
-              <input
-                type="email"
-                placeholder="Email address"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                required
-              />
-              <button>
-                {signup
-                  ? "Create account"
-                  : "Log in"}
-              </button>
-            </form>
-            <small>
-              {signup
-                ? "Already have an account? "
-                : "New to TripPilot? "}
-              <button
-                onClick={() =>
-                  setSignup(!signup)
-                }
-              >
-                {signup
-                  ? "Log in"
-                  : "Create account"}
-              </button>
-            </small>
           </section>
         </div>
       )}
