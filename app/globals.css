@@ -5142,6 +5142,288 @@ html.tripPilotDark body {
 }
 
 /* TripPilot now uses a calm, motion-free dashboard. */
+
+/* Signed-in account: TripPilot boarding pass */
+.authModal.boardingPassModal {
+  width: min(620px, calc(100vw - 32px));
+  max-width: 620px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid rgba(70, 102, 237, 0.16);
+  border-radius: 26px;
+  background: #ffffff;
+  box-shadow: 0 30px 80px rgba(20, 31, 78, 0.28);
+}
+
+.boardingPassModal > .logo {
+  min-height: 80px;
+  padding: 0 30px;
+  border-bottom: 1px dashed #d8ddec;
+  background:
+    radial-gradient(circle at 91% 18%, rgba(255, 212, 95, 0.32), transparent 22%),
+    linear-gradient(135deg, #ffffff 0%, #f6f8ff 100%);
+}
+
+.boardingPassModal > .closeModal {
+  top: 20px;
+  right: 22px;
+  z-index: 2;
+}
+
+.boardingPassAccount {
+  position: relative;
+}
+
+.boardingPassAccount::before,
+.boardingPassAccount::after {
+  position: absolute;
+  top: 154px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #eef1f9;
+  content: "";
+}
+
+.boardingPassAccount::before {
+  left: -12px;
+}
+
+.boardingPassAccount::after {
+  right: -12px;
+}
+
+.boardingPassIdentity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 27px 30px 22px;
+}
+
+.boardingPassAvatar {
+  display: grid;
+  flex: 0 0 72px;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border-radius: 21px;
+  background: linear-gradient(145deg, #5574f2, #2946bd);
+  box-shadow: 0 12px 26px rgba(45, 72, 190, 0.28);
+  color: #ffffff;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.boardingPassLabel {
+  color: #4666ed;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.6px;
+}
+
+.boardingPassIdentity h2 {
+  margin: 5px 0 4px;
+  color: #222633;
+  font-size: 25px;
+}
+
+.boardingPassIdentity p {
+  margin: 0;
+  color: #777d8d;
+  font-size: 13px;
+}
+
+.boardingPassRoute {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 0 30px 20px;
+  color: #6e7588;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+}
+
+.boardingPassRoute i {
+  height: 1px;
+  flex: 1;
+  border-top: 1px dashed #c8cede;
+}
+
+.boardingPassRoute b {
+  color: #4666ed;
+  font-size: 18px;
+  transform: rotate(8deg);
+}
+
+.boardingPassDetails {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 21px 30px 25px;
+  border-top: 1px dashed #d8ddec;
+}
+
+.boardingPassDetails > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border: 1px solid #e5e9f6;
+  border-radius: 14px;
+  background: #f6f8ff;
+}
+
+.boardingPassDetails span {
+  color: #858b9b;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1px;
+}
+
+.boardingPassDetails b {
+  overflow: hidden;
+  color: #292e3c;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boardingPassFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 17px 30px;
+  background: linear-gradient(90deg, #edf2ff, #f7f9ff);
+}
+
+.boardingPassSecure {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4666ed;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.boardingPassSecure i {
+  display: grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border-radius: 50%;
+  background: #4666ed;
+  color: #ffffff;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.boardingPassLogout {
+  border: 0;
+  border-radius: 12px;
+  background: #4666ed;
+  box-shadow: 0 8px 18px rgba(70, 102, 237, 0.25);
+  color: #ffffff;
+  padding: 11px 19px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.boardingPassLogout:hover {
+  background: #3656d8;
+}
+
+.darkMode .authModal.boardingPassModal {
+  border-color: #333b57;
+  background: #1b2030;
+}
+
+.darkMode .boardingPassModal > .logo {
+  border-color: #3a425e;
+  background:
+    radial-gradient(circle at 91% 18%, rgba(255, 212, 95, 0.13), transparent 24%),
+    linear-gradient(135deg, #202638, #1b2030);
+}
+
+.darkMode .boardingPassAccount::before,
+.darkMode .boardingPassAccount::after {
+  background: #101522;
+}
+
+.darkMode .boardingPassIdentity h2,
+.darkMode .boardingPassDetails b {
+  color: #f1f3fa;
+}
+
+.darkMode .boardingPassIdentity p,
+.darkMode .boardingPassRoute {
+  color: #aeb5c8;
+}
+
+.darkMode .boardingPassDetails {
+  border-color: #3a425e;
+}
+
+.darkMode .boardingPassDetails > div {
+  border-color: #343c57;
+  background: #242b40;
+}
+
+.darkMode .boardingPassFooter {
+  background: #222a40;
+}
+
+@media (max-width: 600px) {
+  .boardingPassModal > .logo {
+    min-height: 72px;
+    padding: 0 20px;
+  }
+
+  .boardingPassIdentity {
+    align-items: flex-start;
+    padding: 23px 20px 18px;
+  }
+
+  .boardingPassAvatar {
+    flex-basis: 58px;
+    width: 58px;
+    height: 58px;
+    border-radius: 17px;
+    font-size: 18px;
+  }
+
+  .boardingPassIdentity h2 {
+    font-size: 20px;
+  }
+
+  .boardingPassIdentity p {
+    overflow-wrap: anywhere;
+  }
+
+  .boardingPassRoute {
+    padding: 0 20px 18px;
+  }
+
+  .boardingPassDetails {
+    grid-template-columns: 1fr;
+    padding: 18px 20px 20px;
+  }
+
+  .boardingPassFooter {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 17px 20px 20px;
+  }
+
+  .boardingPassLogout {
+    width: 100%;
+  }
+}
+
 .app *,
 .app *::before,
 .app *::after {

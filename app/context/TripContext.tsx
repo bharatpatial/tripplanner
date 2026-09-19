@@ -4639,6 +4639,20 @@ export function TripPilotShell({
     startZoyaVoice
   } = controller;
 
+  const accountEmail = auth.user?.email || "";
+  const emailName = accountEmail
+    .split("@")[0]
+    .replace(/[._-]+/g, " ")
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const accountName =
+    auth.user?.displayName?.trim() || emailName || "Explorer";
+  const accountInitials = accountName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("") || "E";
+
   return (
     <main
       className={`app ${darkMode ? "darkMode" : ""}`}
@@ -4836,12 +4850,8 @@ export function TripPilotShell({
                 setAuthOpen(true)
               }
             >
-              <span>{auth.user?.displayName || "Explorer"}</span>
-              <i>
-                {(auth.user?.displayName || auth.user?.email || "E")
-                  .charAt(0)
-                  .toUpperCase()}
-              </i>
+              <span>{auth.user ? accountName : "Explorer"}</span>
+              <i>{auth.user ? accountInitials : "E"}</i>
             </button>
           </div>
         </header>
@@ -4950,7 +4960,7 @@ export function TripPilotShell({
           }
         >
           <section
-            className="authModal"
+            className={`authModal ${auth.user ? "boardingPassModal" : ""}`}
             onMouseDown={(e) =>
               e.stopPropagation()
             }
@@ -4965,20 +4975,58 @@ export function TripPilotShell({
             </button>
             <Logo />
             {auth.user ? (
-              <>
-                <h2>{auth.user.displayName || "TripPilot Explorer"}</h2>
-                <p>{auth.user.email}</p>
-                <p>Your newly generated trips are saved securely in Firestore.</p>
-                <button
-                  onClick={async () => {
-                    await auth.logout();
-                    setAuthNotice("");
-                    setAuthOpen(false);
-                  }}
-                >
-                  Log out
-                </button>
-              </>
+              <div className="boardingPassAccount">
+                <div className="boardingPassIdentity">
+                  <div className="boardingPassAvatar" aria-hidden="true">
+                    {accountInitials}
+                  </div>
+                  <div>
+                    <span className="boardingPassLabel">CAPTAIN PROFILE</span>
+                    <h2>{accountName}</h2>
+                    <p>{accountEmail}</p>
+                  </div>
+                </div>
+
+                <div className="boardingPassRoute" aria-label="TripPilot travel route">
+                  <span>YOU</span>
+                  <i />
+                  <b>✈</b>
+                  <i />
+                  <span>WORLD</span>
+                </div>
+
+                <div className="boardingPassDetails">
+                  <div>
+                    <span>ACCOUNT</span>
+                    <b>Google</b>
+                  </div>
+                  <div>
+                    <span>TRIPS</span>
+                    <b>Cloud saved</b>
+                  </div>
+                  <div>
+                    <span>ROLE</span>
+                    <b>Explorer</b>
+                  </div>
+                </div>
+
+                <div className="boardingPassFooter">
+                  <span className="boardingPassSecure">
+                    <i>✓</i> Synced securely with Firestore
+                  </span>
+                  <button
+                    type="button"
+                    className="boardingPassLogout"
+                    onClick={async () => {
+                      await auth.logout();
+                      setAuthNotice("");
+                      setAuthOpen(false);
+                    }}
+                  >
+                    Log out
+                  </button>
+                </div>
+              </div>
             ) : (
               <>
                 <h2>
